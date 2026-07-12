@@ -1,6 +1,6 @@
 """
-動的電子カタログ作成アプリ - FlipHTML5風UI
-A4見開きページ形式の電子カタログを動的に生成します。
+動的電子カタログ作成アプリ - 商品グループブロック型
+見開きページに商品グループブロックを配置
 """
 
 import streamlit as st
@@ -20,27 +20,28 @@ st.set_page_config(
 )
 
 # セッションステートの初期化
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = 0
 if 'df' not in st.session_state:
     st.session_state.df = None
 if 'uploaded_images' not in st.session_state:
     st.session_state.uploaded_images = {}
-if 'block_selections' not in st.session_state:
-    st.session_state.block_selections = {}
+if 'current_spread' not in st.session_state:
+    st.session_state.current_spread = 0
+if 'spread_blocks' not in st.session_state:
+    st.session_state.spread_blocks = {}  # {spread_idx: {page: [blocks]}}
 
-def load_csv(file, encoding='shift_jis'):
+def load_csv(file):
     """CSVファイルを読み込む"""
-    try:
-        df = pd.read_csv(file, encoding=encoding)
-        return df
-    except UnicodeDecodeError:
+    file.seek(0)
+    encodings = ['utf-8', 'shift_jis', 'cp932', 'utf-8-sig', 'iso-2022-jp', 'euc-jp']
+    for enc in encodings:
         try:
-            df = pd.read_csv(file, encoding='cp932')
-            return df
+            file.seek(0)
+            df = pd.read_csv(file, encoding=enc)
+            if len(df.columns) > 0 and not df.empty:
+                return df
         except:
-            df = pd.read_csv(file, encoding='utf-8')
-            return df
+            continue
+    raise ValueError("CSVファイルのエンコーディングを検出できませんでした。")
 
 def image_to_base64(image_data):
     """画像データをBase64エンコード"""
@@ -56,9 +57,7 @@ def load_images_from_folder(folder_path, product_codes):
     images = {}
     if not os.path.exists(folder_path):
         return images
-
     for code in product_codes:
-        # 複数の拡張子に対応
         for ext in ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']:
             img_path = os.path.join(folder_path, f"{code}{ext}")
             if os.path.exists(img_path):
@@ -67,10 +66,9 @@ def load_images_from_folder(folder_path, product_codes):
                 break
     return images
 
-def generate_catalog_html(blocks_per_page, left_blocks, right_blocks, design_config):
-    """見開きカタログのHTMLを生成"""
+def generate_spread_html(left_blocks, right_blocks, design_config, spread_number):
+    """見開きページのHTMLを生成"""
 
-    # CSSスタイル
     css = f"""
     <style>
         * {{
@@ -83,255 +81,286 @@ def generate_catalog_html(blocks_per_page, left_blocks, right_blocks, design_con
             font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
         }}
 
-        .catalog-container {{
-            perspective: 2000px;
-            width: 100%;
-            max-width: 1400px;
+        .spread-container {{
+            max-width: 1600px;
+            margin: 0 auto;
         }}
 
-        .catalog-spread {{
+        .spread {{
             display: flex;
-            background: white;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            border-radius: 8px;
-            overflow: hidden;
-            transition: transform 0.6s ease;
-        }}
-
-        .catalog-spread:hover {{
-            transform: translateY(-5px);
-            box-shadow: 0 25px 70px rgba(0,0,0,0.4);
+            gap: 20px;
+            background: transparent;
         }}
 
         .page {{
             flex: 1;
-            padding: 30px;
-            position: relative;
-        }}
-
-        .page-left {{
-            border-right: 2px solid #e0e0e0;
-            background: linear-gradient(to right, #ffffff 0%, #fafafa 100%);
-        }}
-
-        .page-right {{
-            background: linear-gradient(to left, #ffffff 0%, #fafafa 100%);
+            background: white;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border-radius: 8px;
+            min-height: 1000px;
         }}
 
         .page-number {{
-            position: absolute;
-            bottom: 15px;
-            font-size: 12px;
+            text-align: center;
             color: #999;
+            font-size: 12px;
+            margin-top: 15px;
             font-weight: bold;
         }}
 
-        .page-left .page-number {{
-            left: 15px;
-        }}
-
-        .page-right .page-number {{
-            right: 15px;
-        }}
-
-        .blocks-grid {{
-            display: grid;
-            gap: 20px;
-            height: 100%;
-        }}
-
-        .grid-1 {{ grid-template-columns: 1fr; }}
-        .grid-2 {{ grid-template-columns: repeat(2, 1fr); }}
-        .grid-4 {{ grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }}
-        .grid-6 {{ grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }}
-        .grid-8 {{ grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }}
-
-        .product-block {{
+        .product-group-block {{
             border: 2px solid #ddd;
             border-radius: 8px;
-            padding: {design_config['padding']}px;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s ease;
             overflow: hidden;
+            margin-bottom: 25px;
+            background: white;
         }}
 
-        .product-block:hover {{
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-            border-color: {design_config['header_color']};
+        .product-group-block:last-child {{
+            margin-bottom: 0;
         }}
 
-        .product-image {{
-            width: 100%;
-            height: 150px;
+        .block-category-header {{
+            background: linear-gradient(135deg, #2c5aa0 0%, #1e3c72 100%);
+            color: white;
+            padding: 10px 15px;
+            font-size: {design_config['font_size'] + 2}px;
+            font-weight: bold;
+        }}
+
+        .block-category-header::before {{
+            content: "★ ";
+        }}
+
+        .block-product-title {{
+            background: #f8f9fa;
+            padding: 12px 15px;
+            font-size: {design_config['font_size'] + 1}px;
+            font-weight: bold;
+            color: #333;
+            border-bottom: 1px solid #e0e0e0;
+        }}
+
+        .block-specs {{
+            padding: 10px 15px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+        }}
+
+        .spec-item {{
+            font-size: {design_config['font_size'] - 1}px;
+            color: #555;
+            margin: 4px 0;
+        }}
+
+        .spec-item::before {{
+            content: "■ ";
+            color: #2c5aa0;
+        }}
+
+        .block-images {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #fafafa;
+            border-bottom: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+        }}
+
+        .block-image-wrapper {{
+            text-align: center;
+        }}
+
+        .block-image {{
+            max-width: 150px;
+            max-height: 120px;
             object-fit: contain;
-            margin-bottom: 10px;
-            background: #f9f9f9;
+            background: white;
+            padding: 8px;
             border-radius: 4px;
+            border: 1px solid #e0e0e0;
         }}
 
-        .product-table {{
+        .image-label {{
+            font-size: {design_config['font_size'] - 2}px;
+            color: #666;
+            margin-top: 5px;
+        }}
+
+        .block-variants-table {{
             width: 100%;
             border-collapse: collapse;
-            font-size: {design_config['font_size']}px;
+            font-size: {design_config['font_size'] - 1}px;
         }}
 
-        .product-table th {{
-            background: {design_config['header_color']};
+        .block-variants-table thead {{
+            background: linear-gradient(135deg, #2c5aa0 0%, #1e3c72 100%);
             color: white;
-            padding: {design_config['padding']}px;
+        }}
+
+        .block-variants-table th {{
+            padding: 8px;
             text-align: left;
-            font-weight: bold;
-            border: 1px solid {design_config['border_color']};
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-size: {design_config['font_size'] - 1}px;
         }}
 
-        .product-table td {{
-            padding: {design_config['padding']}px;
-            border: 1px solid {design_config['border_color']};
-            background: white;
+        .block-variants-table tbody tr {{
+            border-bottom: 1px solid #e0e0e0;
         }}
 
-        .product-table tr:nth-child(even) td {{
+        .block-variants-table tbody tr:nth-child(even) {{
             background: #f8f9fa;
         }}
 
-        .navigation {{
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 30px;
+        .block-variants-table td {{
+            padding: 8px;
+            border: 1px solid #e0e0e0;
         }}
 
-        .nav-button {{
-            background: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 50px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            color: #667eea;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-
-        .nav-button:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-            background: #667eea;
+        .order-number-cell {{
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
             color: white;
-        }}
-
-        .nav-button:disabled {{
-            opacity: 0.3;
-            cursor: not-allowed;
-        }}
-
-        .no-data {{
-            color: #999;
+            font-weight: bold;
             text-align: center;
-            padding: 20px;
-            font-style: italic;
+            font-size: {design_config['font_size']}px;
         }}
 
-        @media print {{
-            body {{
-                background: white;
-            }}
-            .navigation {{
-                display: none;
-            }}
+        .price-cell {{
+            font-weight: bold;
+            color: #d32f2f;
+            text-align: right;
+        }}
+
+        .barcode-cell {{
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: {design_config['font_size'] - 2}px;
+        }}
+
+        .empty-block {{
+            padding: 40px;
+            text-align: center;
+            color: #ccc;
+            font-style: italic;
+            background: #fafafa;
         }}
     </style>
     """
 
-    # ブロック生成関数
-    def create_block_html(block_data):
-        if not block_data:
-            return '<div class="product-block"><div class="no-data">商品が選択されていません</div></div>'
+    def create_group_block_html(block_data):
+        if not block_data or not block_data.get('records'):
+            return '<div class="product-group-block"><div class="empty-block">ブロック未設定</div></div>'
 
-        image_html = ''
-        if block_data.get('image'):
-            image_html = f'<img src="data:image/png;base64,{block_data["image"]}" class="product-image" alt="{block_data.get("name", "商品画像")}">'
+        category = block_data.get('category', '')
+        title = block_data.get('title', '商品名')
+        specs = block_data.get('specs', [])
+        images = block_data.get('images', [])
+        records = block_data.get('records', [])
 
-        table_rows = ''
-        for col, value in block_data.get('data', {}).items():
-            table_rows += f'<tr><th>{col}</th><td>{value}</td></tr>'
+        # カテゴリヘッダー（メーカー名など）
+        category_html = ''
+        if category:
+            category_html = f'<div class="block-category-header">{category}</div>'
+
+        # 商品タイトル
+        title_html = f'<div class="block-product-title">{title}</div>'
+
+        # スペック
+        specs_html = ''
+        if specs:
+            specs_items = ''.join([f'<div class="spec-item">{spec}</div>' for spec in specs])
+            specs_html = f'<div class="block-specs">{specs_items}</div>'
+
+        # 画像
+        images_html = ''
+        if images:
+            imgs = ''
+            for img in images:
+                img_data = img.get('data', '')
+                img_label = img.get('label', '')
+                if img_data:
+                    imgs += f'''
+                    <div class="block-image-wrapper">
+                        <img src="data:image/png;base64,{img_data}" class="block-image" alt="{img_label}">
+                        <div class="image-label">{img_label}</div>
+                    </div>
+                    '''
+            if imgs:
+                images_html = f'<div class="block-images">{imgs}</div>'
+
+        # バリエーション表
+        table_html = ''
+        if records:
+            headers = list(records[0].keys())
+            headers_html = ''.join([f'<th>{h}</th>' for h in headers])
+
+            rows = ''
+            for record in records:
+                cells = []
+                for key, value in record.items():
+                    if 'order' in key.lower() or 'number' in key.lower():
+                        cells.append(f'<td class="order-number-cell">{value}</td>')
+                    elif '価格' in key or 'price' in key.lower() or '定価' in key:
+                        cells.append(f'<td class="price-cell">{value}</td>')
+                    elif 'barcode' in key.lower() or 'jan' in key.lower() or 'コード' in key:
+                        cells.append(f'<td class="barcode-cell">|||||||||||||||||||<br>{value}</td>')
+                    else:
+                        cells.append(f'<td>{value}</td>')
+                rows += '<tr>' + ''.join(cells) + '</tr>'
+
+            table_html = f'''
+            <table class="block-variants-table">
+                <thead><tr>{headers_html}</tr></thead>
+                <tbody>{rows}</tbody>
+            </table>
+            '''
 
         return f'''
-        <div class="product-block">
-            {image_html}
-            <table class="product-table">
-                {table_rows}
-            </table>
+        <div class="product-group-block">
+            {category_html}
+            {title_html}
+            {specs_html}
+            {images_html}
+            {table_html}
         </div>
         '''
 
-    # グリッドクラス決定
-    grid_class = f"grid-{blocks_per_page}"
+    # 左ページ
+    left_html = ''.join([create_group_block_html(block) for block in left_blocks])
 
-    # 左ページのブロック生成
-    left_html = ''.join([create_block_html(block) for block in left_blocks])
+    # 右ページ
+    right_html = ''.join([create_group_block_html(block) for block in right_blocks])
 
-    # 右ページのブロック生成
-    right_html = ''.join([create_block_html(block) for block in right_blocks])
-
-    # 完全なHTML
     html = f"""
     <!DOCTYPE html>
     <html lang="ja">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>電子カタログ</title>
+        <title>電子カタログ - 見開き {spread_number + 1}</title>
         {css}
     </head>
     <body>
-        <div class="catalog-container">
-            <div class="catalog-spread">
-                <div class="page page-left">
-                    <div class="blocks-grid {grid_class}">
-                        {left_html}
-                    </div>
-                    <div class="page-number">Page {st.session_state.current_page * 2 + 1}</div>
+        <div class="spread-container">
+            <div class="spread">
+                <div class="page">
+                    {left_html}
+                    <div class="page-number">Page {spread_number * 2 + 1}</div>
                 </div>
-                <div class="page page-right">
-                    <div class="blocks-grid {grid_class}">
-                        {right_html}
-                    </div>
-                    <div class="page-number">Page {st.session_state.current_page * 2 + 2}</div>
+                <div class="page">
+                    {right_html}
+                    <div class="page-number">Page {spread_number * 2 + 2}</div>
                 </div>
-            </div>
-            <div class="navigation">
-                <button class="nav-button" onclick="window.parent.postMessage({{type: 'prev'}}, '*')"
-                        id="prevBtn">
-                    ◀ 前のページ
-                </button>
-                <button class="nav-button" onclick="window.parent.postMessage({{type: 'next'}}, '*')"
-                        id="nextBtn">
-                    次のページ ▶
-                </button>
             </div>
         </div>
-        <script>
-            // Streamlitとの通信
-            window.addEventListener('message', function(event) {{
-                if (event.data.type === 'updatePage') {{
-                    window.location.reload();
-                }}
-            }});
-        </script>
     </body>
     </html>
     """
@@ -339,52 +368,89 @@ def generate_catalog_html(blocks_per_page, left_blocks, right_blocks, design_con
     return html
 
 
-# ========== サイドバー: コントロールパネル ==========
+# ========== サイドバー ==========
 with st.sidebar:
-    st.title("📖 電子カタログ設定")
+    st.title("📖 カタログ設定")
 
-    # CSV読み込み
     st.header("1️⃣ データ読み込み")
     uploaded_csv = st.file_uploader("CSVファイルをアップロード", type=['csv'])
 
     if uploaded_csv:
-        st.session_state.df = load_csv(uploaded_csv)
-        st.success(f"✅ {len(st.session_state.df)}件のデータを読み込みました")
+        try:
+            st.session_state.df = load_csv(uploaded_csv)
+            st.success(f"✅ {len(st.session_state.df)}件")
+            with st.expander("📊 データプレビュー"):
+                st.dataframe(st.session_state.df.head(10), use_container_width=True)
+        except Exception as e:
+            st.error(f"❌ エラー: {str(e)}")
 
-        # データプレビュー
-        with st.expander("📊 データプレビュー"):
-            st.dataframe(st.session_state.df.head(10), use_container_width=True)
-
-    # レイアウト設定
     st.header("2️⃣ レイアウト設定")
     blocks_per_page = st.selectbox(
         "1ページあたりのブロック数",
-        options=[1, 2, 4, 6, 8],
-        index=2,
-        help="見開き1ページ（左または右）に表示する商品ブロック数"
+        options=[1, 2, 4],
+        index=1,
+        help="左右各ページに配置する商品グループブロック数"
     )
 
-    # カラム選択
-    st.header("3️⃣ 表示項目選択")
+    st.header("3️⃣ カラム設定")
     if st.session_state.df is not None:
-        selected_columns = st.multiselect(
-            "表示するカラム（スペック項目）",
-            options=st.session_state.df.columns.tolist(),
-            default=st.session_state.df.columns.tolist()[:5] if len(st.session_state.df.columns) >= 5 else st.session_state.df.columns.tolist(),
-            help="選択したカラムのみがテーブルに表示されます"
+        all_columns = st.session_state.df.columns.tolist()
+
+        group_by_column = st.selectbox(
+            "グループ化カラム（商品名）",
+            options=all_columns,
+            index=1 if len(all_columns) > 1 else 0,
+            help="同じ値でグループ化"
+        )
+
+        # メーカーっぽいカラムを自動検出
+        default_category_index = 0
+        for idx, col in enumerate(all_columns):
+            if 'メーカー' in col or 'maker' in col.lower() or 'brand' in col.lower() or 'ブランド' in col:
+                default_category_index = idx + 1  # +1 は "なし" の分
+                break
+
+        category_column = st.selectbox(
+            "カテゴリヘッダー表示カラム（★マーク付き青ヘッダー）",
+            options=["なし"] + all_columns,
+            index=default_category_index,
+            help="ブロック左上の青いヘッダー「★シマノ」に表示するカラム（例: メーカー名）"
+        )
+
+        st.info(f"💡 選択中: {category_column if category_column != 'なし' else '未選択'}")
+
+        spec_columns = st.multiselect(
+            "スペック項目カラム",
+            options=all_columns,
+            default=[],
+            help="■付きで表示"
         )
 
         product_id_column = st.selectbox(
-            "商品識別カラム（画像マッチング用）",
-            options=st.session_state.df.columns.tolist(),
-            index=0,
-            help="画像ファイル名とマッチングするカラムを選択"
+            "商品識別カラム（画像マッチング）",
+            options=all_columns,
+            index=0
+        )
+
+        image_label_column = st.selectbox(
+            "画像ラベルカラム",
+            options=["なし"] + all_columns,
+            help="画像の下に表示"
+        )
+
+        table_columns = st.multiselect(
+            "表示カラム（バリエーション表）",
+            options=all_columns,
+            default=all_columns[:5] if len(all_columns) >= 5 else all_columns
         )
     else:
-        selected_columns = []
+        group_by_column = None
+        category_column = "なし"
+        spec_columns = []
         product_id_column = None
+        image_label_column = "なし"
+        table_columns = []
 
-    # 画像読み込み
     st.header("4️⃣ 画像設定")
     image_mode = st.radio(
         "画像の読み込み方法",
@@ -393,175 +459,262 @@ with st.sidebar:
     )
 
     if image_mode == "フォルダ指定":
-        folder_path = st.text_input(
-            "画像フォルダのパス",
-            placeholder="例: C:/images/products",
-            help="商品コードと一致するファイル名の画像を自動検索"
-        )
+        folder_path = st.text_input("画像フォルダのパス", placeholder="例: C:/images")
         if folder_path and st.session_state.df is not None and product_id_column:
-            product_codes = st.session_state.df[product_id_column].astype(str).tolist()
-            st.session_state.uploaded_images = load_images_from_folder(folder_path, product_codes)
-            st.info(f"🖼️ {len(st.session_state.uploaded_images)}枚の画像を読み込みました")
+            codes = st.session_state.df[product_id_column].astype(str).tolist()
+            st.session_state.uploaded_images = load_images_from_folder(folder_path, codes)
+            if st.session_state.uploaded_images:
+                st.success(f"🖼️ {len(st.session_state.uploaded_images)}枚")
     else:
-        uploaded_files = st.file_uploader(
-            "画像ファイルをアップロード",
-            type=['png', 'jpg', 'jpeg'],
-            accept_multiple_files=True
-        )
+        uploaded_files = st.file_uploader("画像ファイルをアップロード", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
         if uploaded_files:
             st.session_state.uploaded_images = {}
             for file in uploaded_files:
-                # ファイル名から拡張子を除いた部分を商品コードとする
                 code = Path(file.name).stem
                 st.session_state.uploaded_images[code] = image_to_base64(file.read())
-            st.info(f"🖼️ {len(st.session_state.uploaded_images)}枚の画像をアップロードしました")
+            st.success(f"🖼️ {len(st.session_state.uploaded_images)}枚")
 
-    # デザイン設定
     st.header("5️⃣ デザイン設定")
-    header_color = st.color_picker("テーブルヘッダー色", "#667eea")
-    border_color = st.color_picker("枠線の色", "#dddddd")
-    font_size = st.slider("フォントサイズ (px)", 10, 28, 14)
-    padding = st.slider("セル余白 (px)", 5, 25, 10)
+    font_size = st.slider("フォントサイズ (px)", 10, 16, 11)
+    padding = st.slider("余白 (px)", 8, 20, 12)
 
     design_config = {
-        'header_color': header_color,
-        'border_color': border_color,
         'font_size': font_size,
         'padding': padding
     }
 
-# ========== 商品選択パネル ==========
-st.title("📝 商品配置設定")
+# ========== メイン画面 ==========
+st.title("📝 見開きページ作成（商品グループブロック型）")
 
-if st.session_state.df is not None and selected_columns:
+if st.session_state.df is not None and group_by_column and table_columns:
+
     # ページナビゲーション
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
-        if st.button("⬅️ 前のページ", use_container_width=True):
-            if st.session_state.current_page > 0:
-                st.session_state.current_page -= 1
+        if st.button("⬅️ 前の見開き", use_container_width=True):
+            if st.session_state.current_spread > 0:
+                st.session_state.current_spread -= 1
                 st.rerun()
     with col2:
-        st.markdown(f"<h3 style='text-align: center;'>見開き {st.session_state.current_page + 1}</h3>",
-                   unsafe_allow_html=True)
+        st.markdown(f"<h3 style='text-align: center;'>見開き {st.session_state.current_spread + 1}</h3>", unsafe_allow_html=True)
     with col3:
-        if st.button("次のページ ➡️", use_container_width=True):
-            st.session_state.current_page += 1
+        if st.button("次の見開き ➡️", use_container_width=True):
+            st.session_state.current_spread += 1
             st.rerun()
 
     st.divider()
 
-    # 左右ページの商品選択
+    # 利用可能な商品グループ
+    available_groups = st.session_state.df[group_by_column].unique().tolist()
+    group_options = ["未選択"] + [str(g) for g in available_groups]
+
+    # 左右ページのブロック選択
     left_col, right_col = st.columns(2)
+
+    left_blocks_data = []
+    right_blocks_data = []
 
     with left_col:
         st.subheader("📄 左ページ")
-        left_blocks = []
+
         for i in range(blocks_per_page):
-            with st.expander(f"ブロック {i+1}", expanded=(i==0)):
-                key = f"left_{st.session_state.current_page}_{i}"
-                selected_product = st.selectbox(
-                    "商品を選択",
-                    options=["未選択"] + st.session_state.df[product_id_column].astype(str).tolist(),
-                    key=key
+            with st.expander(f"ブロック {i+1}", expanded=(i == 0)):
+                selected_group = st.selectbox(
+                    "商品グループを選択",
+                    options=group_options,
+                    key=f"left_{st.session_state.current_spread}_{i}"
                 )
 
-                if selected_product != "未選択":
-                    product_row = st.session_state.df[
-                        st.session_state.df[product_id_column].astype(str) == selected_product
-                    ].iloc[0]
+                if selected_group != "未選択":
+                    group_df = st.session_state.df[st.session_state.df[group_by_column] == selected_group]
 
-                    block_data = {
-                        'name': selected_product,
-                        'data': {col: product_row[col] for col in selected_columns},
-                        'image': st.session_state.uploaded_images.get(str(selected_product), '')
-                    }
-                    left_blocks.append(block_data)
+                    # カテゴリ（メーカー名など）
+                    category = ""
+                    if category_column != "なし":
+                        category = str(group_df.iloc[0][category_column])
+                        st.caption(f"📌 カテゴリ: {category}")
+
+                    # タイトル
+                    title = selected_group
+
+                    # スペック
+                    specs = []
+                    if spec_columns:
+                        for col in spec_columns:
+                            specs.append(f"{col}: {group_df.iloc[0][col]}")
+
+                    # 画像選択UI
+                    st.markdown("**🖼️ 画像を選択**")
+                    available_images = list(st.session_state.uploaded_images.keys()) if st.session_state.uploaded_images else []
+
+                    if available_images:
+                        # グループ内の商品IDから自動選択候補を作成
+                        unique_ids = group_df[product_id_column].unique()
+                        default_selections = [str(uid) for uid in unique_ids if str(uid) in available_images][:5]
+
+                        selected_image_keys = st.multiselect(
+                            "表示する画像を選択（最大5枚）",
+                            options=available_images,
+                            default=default_selections,
+                            key=f"img_left_{st.session_state.current_spread}_{i}",
+                            help="このブロックに表示する画像を選択してください"
+                        )
+
+                        # 選択された画像のプレビュー
+                        if selected_image_keys:
+                            cols = st.columns(min(len(selected_image_keys), 3))
+                            for idx, img_key in enumerate(selected_image_keys[:3]):
+                                with cols[idx]:
+                                    st.image(
+                                        f"data:image/png;base64,{st.session_state.uploaded_images[img_key]}",
+                                        caption=img_key,
+                                        width=100
+                                    )
+                    else:
+                        st.warning("⚠️ 画像がアップロードされていません")
+                        selected_image_keys = []
+
+                    # 画像データ構築
+                    images = []
+                    for img_key in selected_image_keys[:5]:
+                        img_data = st.session_state.uploaded_images.get(img_key, '')
+                        label = img_key
+                        if image_label_column != "なし":
+                            # 画像キーに対応する行を探す
+                            matching_rows = group_df[group_df[product_id_column].astype(str) == img_key]
+                            if not matching_rows.empty:
+                                label = str(matching_rows.iloc[0][image_label_column])
+                        images.append({'data': img_data, 'label': label})
+
+                    # レコード
+                    records = []
+                    for _, row in group_df.iterrows():
+                        record = {col: str(row[col]) for col in table_columns if col in row}
+                        records.append(record)
+
+                    left_blocks_data.append({
+                        'category': category,
+                        'title': title,
+                        'specs': specs,
+                        'images': images,
+                        'records': records
+                    })
+
+                    st.success(f"✅ {len(group_df)}件のバリエーション | 📷 {len(images)}枚の画像")
                 else:
-                    left_blocks.append(None)
+                    left_blocks_data.append(None)
 
     with right_col:
         st.subheader("📄 右ページ")
-        right_blocks = []
+
         for i in range(blocks_per_page):
-            with st.expander(f"ブロック {i+1}", expanded=(i==0)):
-                key = f"right_{st.session_state.current_page}_{i}"
-                selected_product = st.selectbox(
-                    "商品を選択",
-                    options=["未選択"] + st.session_state.df[product_id_column].astype(str).tolist(),
-                    key=key
+            with st.expander(f"ブロック {i+1}", expanded=(i == 0)):
+                selected_group = st.selectbox(
+                    "商品グループを選択",
+                    options=group_options,
+                    key=f"right_{st.session_state.current_spread}_{i}"
                 )
 
-                if selected_product != "未選択":
-                    product_row = st.session_state.df[
-                        st.session_state.df[product_id_column].astype(str) == selected_product
-                    ].iloc[0]
+                if selected_group != "未選択":
+                    group_df = st.session_state.df[st.session_state.df[group_by_column] == selected_group]
 
-                    block_data = {
-                        'name': selected_product,
-                        'data': {col: product_row[col] for col in selected_columns},
-                        'image': st.session_state.uploaded_images.get(str(selected_product), '')
-                    }
-                    right_blocks.append(block_data)
+                    # カテゴリ（メーカー名など）
+                    category = ""
+                    if category_column != "なし":
+                        category = str(group_df.iloc[0][category_column])
+                        st.caption(f"📌 カテゴリ: {category}")
+
+                    title = selected_group
+                    specs = []
+                    if spec_columns:
+                        for col in spec_columns:
+                            specs.append(f"{col}: {group_df.iloc[0][col]}")
+
+                    # 画像選択UI
+                    st.markdown("**🖼️ 画像を選択**")
+                    available_images = list(st.session_state.uploaded_images.keys()) if st.session_state.uploaded_images else []
+
+                    if available_images:
+                        # グループ内の商品IDから自動選択候補を作成
+                        unique_ids = group_df[product_id_column].unique()
+                        default_selections = [str(uid) for uid in unique_ids if str(uid) in available_images][:5]
+
+                        selected_image_keys = st.multiselect(
+                            "表示する画像を選択（最大5枚）",
+                            options=available_images,
+                            default=default_selections,
+                            key=f"img_right_{st.session_state.current_spread}_{i}",
+                            help="このブロックに表示する画像を選択してください"
+                        )
+
+                        # 選択された画像のプレビュー
+                        if selected_image_keys:
+                            cols = st.columns(min(len(selected_image_keys), 3))
+                            for idx, img_key in enumerate(selected_image_keys[:3]):
+                                with cols[idx]:
+                                    st.image(
+                                        f"data:image/png;base64,{st.session_state.uploaded_images[img_key]}",
+                                        caption=img_key,
+                                        width=100
+                                    )
+                    else:
+                        st.warning("⚠️ 画像がアップロードされていません")
+                        selected_image_keys = []
+
+                    # 画像データ構築
+                    images = []
+                    for img_key in selected_image_keys[:5]:
+                        img_data = st.session_state.uploaded_images.get(img_key, '')
+                        label = img_key
+                        if image_label_column != "なし":
+                            # 画像キーに対応する行を探す
+                            matching_rows = group_df[group_df[product_id_column].astype(str) == img_key]
+                            if not matching_rows.empty:
+                                label = str(matching_rows.iloc[0][image_label_column])
+                        images.append({'data': img_data, 'label': label})
+
+                    records = []
+                    for _, row in group_df.iterrows():
+                        record = {col: str(row[col]) for col in table_columns if col in row}
+                        records.append(record)
+
+                    right_blocks_data.append({
+                        'category': category,
+                        'title': title,
+                        'specs': specs,
+                        'images': images,
+                        'records': records
+                    })
+
+                    st.success(f"✅ {len(group_df)}件のバリエーション | 📷 {len(images)}枚の画像")
                 else:
-                    right_blocks.append(None)
+                    right_blocks_data.append(None)
 
-    # カタログプレビュー
+    # プレビュー
     st.divider()
-    st.subheader("👁️ カタログプレビュー")
+    st.subheader("👁️ 見開きプレビュー")
 
-    catalog_html = generate_catalog_html(blocks_per_page, left_blocks, right_blocks, design_config)
-    st.components.v1.html(catalog_html, height=800, scrolling=True)
+    spread_html = generate_spread_html(left_blocks_data, right_blocks_data, design_config, st.session_state.current_spread)
+    st.components.v1.html(spread_html, height=1100, scrolling=True)
 
-    # HTML出力
+    # 出力
     st.divider()
     st.subheader("💾 出力")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📥 HTMLをダウンロード", use_container_width=True):
-            st.download_button(
-                label="⬇️ ダウンロード実行",
-                data=catalog_html,
-                file_name=f"catalog_spread_{st.session_state.current_page + 1}.html",
-                mime="text/html",
-                use_container_width=True
-            )
-
-    with col2:
-        if st.button("🖨️ 印刷プレビュー", use_container_width=True):
-            st.info("ブラウザの印刷機能（Ctrl+P）をご利用ください")
+    st.download_button(
+        label=f"📥 見開き{st.session_state.current_spread + 1}をダウンロード",
+        data=spread_html,
+        file_name=f"catalog_spread_{st.session_state.current_spread + 1}.html",
+        mime="text/html",
+        use_container_width=True
+    )
 
 else:
-    st.info("👈 左のサイドバーからCSVファイルをアップロードしてください")
+    st.info("👈 左のサイドバーでCSVをアップロードし、設定を行ってください")
 
-    # サンプル情報
-    st.markdown("""
-    ### 📖 使い方
-
-    1. **CSVデータを読み込み**: 左サイドバーから商品データのCSVファイルをアップロード
-    2. **レイアウト選択**: 1ページあたりのブロック数（商品数）を選択
-    3. **表示項目設定**: カタログに表示したいカラム（スペック項目）を選択
-    4. **画像設定**: フォルダ指定またはファイルアップロードで商品画像を読み込み
-    5. **デザイン調整**: 色・フォントサイズ・余白をカスタマイズ
-    6. **商品配置**: 各ブロックに表示する商品を選択
-    7. **プレビュー確認**: リアルタイムで見開きカタログを確認
-    8. **出力**: HTMLファイルとしてダウンロードまたは印刷
-
-    ### 💡 特徴
-
-    - ✨ FlipHTML5風の美しい見開きUI
-    - 🎨 リアルタイムデザイン変更
-    - 📊 CSV動的バインディング
-    - 🖼️ 画像の自動マッチング
-    - 📱 レスポンシブ対応
-    - 🖨️ 印刷最適化済み
-    """)
-
-# フッター
 st.divider()
 st.markdown("""
 <div style='text-align: center; color: #999; padding: 20px;'>
-    <p>電子カタログ作成アプリ v1.0 | Powered by Streamlit</p>
+    <p>電子カタログ作成アプリ v5.0 (商品グループブロック型) | Powered by Streamlit</p>
 </div>
 """, unsafe_allow_html=True)
