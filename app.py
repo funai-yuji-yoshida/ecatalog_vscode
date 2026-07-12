@@ -10,6 +10,11 @@ import json
 import os
 from pathlib import Path
 from io import BytesIO
+try:
+    from xhtml2pdf import pisa
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
 
 # ページ設定
 st.set_page_config(
@@ -66,10 +71,137 @@ def load_images_from_folder(folder_path, product_codes):
                 break
     return images
 
-def generate_spread_html(left_blocks, right_blocks, design_config, spread_number):
+def generate_spread_html(left_blocks, right_blocks, design_config, spread_number, pdf_mode=False):
     """見開きページのHTMLを生成"""
 
-    css = f"""
+    # PDF用の簡素化されたCSS
+    if pdf_mode:
+        css = f"""
+        <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: 'MS Gothic', 'Yu Gothic', sans-serif;
+            background: white;
+            padding: 10px;
+        }}
+
+        .spread {{
+            display: table;
+            width: 100%;
+        }}
+
+        .page {{
+            display: table-cell;
+            width: 50%;
+            padding: 10px;
+            vertical-align: top;
+        }}
+
+        .product-group-block {{
+            border: 2px solid #333;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }}
+
+        .block-category-header {{
+            background: #2c5aa0;
+            color: white;
+            padding: 8px 12px;
+            font-size: {design_config['font_size'] + 2}px;
+            font-weight: bold;
+        }}
+
+        .block-product-title {{
+            background: #f0f0f0;
+            padding: 10px 12px;
+            font-size: {design_config['font_size'] + 1}px;
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+        }}
+
+        .block-specs {{
+            padding: 8px 12px;
+            background: white;
+            border-bottom: 1px solid #ccc;
+        }}
+
+        .spec-item {{
+            font-size: {design_config['font_size'] - 1}px;
+            margin: 3px 0;
+        }}
+
+        .block-images {{
+            text-align: center;
+            padding: 10px;
+            background: #fafafa;
+            border-bottom: 1px solid #ccc;
+        }}
+
+        .block-image {{
+            max-width: 120px;
+            max-height: 100px;
+            margin: 5px;
+        }}
+
+        .image-label {{
+            font-size: {design_config['font_size'] - 2}px;
+            color: #666;
+        }}
+
+        .block-variants-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: {design_config['font_size'] - 1}px;
+        }}
+
+        .block-variants-table th {{
+            background: #2c5aa0;
+            color: white;
+            padding: 6px;
+            text-align: left;
+            border: 1px solid #fff;
+        }}
+
+        .block-variants-table td {{
+            padding: 6px;
+            border: 1px solid #ccc;
+        }}
+
+        .order-number-cell {{
+            background: #ff9800;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }}
+
+        .price-cell {{
+            font-weight: bold;
+            color: #d32f2f;
+            text-align: right;
+        }}
+
+        .barcode-cell {{
+            text-align: center;
+            font-family: monospace;
+            font-size: {design_config['font_size'] - 2}px;
+        }}
+
+        .page-number {{
+            text-align: center;
+            color: #999;
+            font-size: 10px;
+            margin-top: 10px;
+        }}
+        </style>
+        """
+    else:
+        # 通常表示用のCSS（既存のまま）
+        css = f"""
     <style>
         * {{
             margin: 0;
@@ -268,7 +400,11 @@ def generate_spread_html(left_blocks, right_blocks, design_config, spread_number
         # カテゴリヘッダー（メーカー名など）
         category_html = ''
         if category:
-            category_html = f'<div class="block-category-header">{category}</div>'
+            # PDF用は★を直接テキストに含める
+            if pdf_mode:
+                category_html = f'<div class="block-category-header">★ {category}</div>'
+            else:
+                category_html = f'<div class="block-category-header">{category}</div>'
 
         # 商品タイトル
         title_html = f'<div class="block-product-title">{title}</div>'
@@ -276,7 +412,11 @@ def generate_spread_html(left_blocks, right_blocks, design_config, spread_number
         # スペック
         specs_html = ''
         if specs:
-            specs_items = ''.join([f'<div class="spec-item">{spec}</div>' for spec in specs])
+            # PDF用は■を直接テキストに含める
+            if pdf_mode:
+                specs_items = ''.join([f'<div class="spec-item">■ {spec}</div>' for spec in specs])
+            else:
+                specs_items = ''.join([f'<div class="spec-item">{spec}</div>' for spec in specs])
             specs_html = f'<div class="block-specs">{specs_items}</div>'
 
         # 画像
@@ -701,13 +841,75 @@ if st.session_state.df is not None and group_by_column and table_columns:
     st.divider()
     st.subheader("💾 出力")
 
-    st.download_button(
-        label=f"📥 見開き{st.session_state.current_spread + 1}をダウンロード",
-        data=spread_html,
-        file_name=f"catalog_spread_{st.session_state.current_spread + 1}.html",
-        mime="text/html",
-        use_container_width=True
-    )
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.download_button(
+            label=f"📥 HTMLダウンロード",
+            data=spread_html,
+            file_name=f"catalog_spread_{st.session_state.current_spread + 1}.html",
+            mime="text/html",
+            use_container_width=True
+        )
+
+    with col2:
+        if PDF_AVAILABLE:
+            if st.button("📄 PDFを生成", use_container_width=True, type="primary"):
+                with st.spinner("PDFを生成中..."):
+                    try:
+                        # PDF用のHTMLを生成（pdf_mode=True）
+                        pdf_html = generate_spread_html(
+                            left_blocks_data,
+                            right_blocks_data,
+                            design_config,
+                            st.session_state.current_spread,
+                            pdf_mode=True
+                        )
+
+                        # A4サイズのCSS追加
+                        pdf_html = pdf_html.replace(
+                            '</head>',
+                            '''
+                            <style>
+                            @page {
+                                size: A4 landscape;
+                                margin: 10mm;
+                            }
+                            </style>
+                            </head>
+                            '''
+                        )
+
+                        # PDFに変換
+                        pdf_output = BytesIO()
+                        pisa_status = pisa.CreatePDF(
+                            pdf_html.encode('utf-8'),
+                            dest=pdf_output
+                        )
+
+                        if not pisa_status.err:
+                            pdf_output.seek(0)
+                            st.download_button(
+                                label="⬇️ PDFダウンロード",
+                                data=pdf_output.getvalue(),
+                                file_name=f"catalog_spread_{st.session_state.current_spread + 1}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True
+                            )
+                            st.success("✅ PDF生成完了！")
+                        else:
+                            st.error("❌ PDF生成に失敗しました")
+                            st.info("💡 HTMLをダウンロードしてブラウザから印刷（Ctrl+P）してください")
+                    except Exception as e:
+                        st.error(f"❌ エラー: {str(e)}")
+                        st.info("💡 HTMLをダウンロードしてブラウザから印刷してください")
+        else:
+            st.warning("⚠️ PDF機能を使用するには、xhtml2pdfをインストールしてください")
+            with st.expander("インストール方法"):
+                st.code("pip install xhtml2pdf", language="bash")
+                st.markdown("""
+                または、HTMLをダウンロードしてブラウザから印刷（Ctrl+P → PDFとして保存）できます。
+                """)
 
 else:
     st.info("👈 左のサイドバーでCSVをアップロードし、設定を行ってください")
