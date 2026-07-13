@@ -24,7 +24,7 @@ wheels/
 *.egg
 
 # Streamlit
-.streamlit/
+# .streamlit/  # デプロイ用config.tomlを含めるためコメントアウト
 
 # IDE
 .vscode/
