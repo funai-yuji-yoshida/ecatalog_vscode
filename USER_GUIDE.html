@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電子カタログ作成アプリ - 使用説明書</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2c5aa0 0%, #1e3c72 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .version {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        nav {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            border-bottom: 2px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #2c5aa0;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+        nav a:hover {
+            background: #2c5aa0;
+            color: white;
+        }
+
+        main {
+            padding: 40px;
+        }
+
+        section {
+            margin-bottom: 60px;
+        }
+
+        h2 {
+            font-size: 2em;
+            color: #2c5aa0;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #2c5aa0;
+        }
+
+        h3 {
+            font-size: 1.5em;
+            color: #333;
+            margin: 30px 0 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3::before {
+            content: "▶";
+            color: #ff9800;
+            font-size: 0.8em;
+        }
+
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #ff9800;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #ff9800;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 35px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .feature-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: #2c5aa0;
+            box-shadow: 0 8px 20px rgba(44,90,160,0.15);
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .feature-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c5aa0;
+            margin-bottom: 10px;
+        }
+
+        .tip {
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .tip::before {
+            content: "💡 ";
+            font-size: 1.2em;
+        }
+
+        .warning {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .warning::before {
+            content: "⚠️ ";
+            font-size: 1.2em;
+        }
+
+        .success {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .success::before {
+            content: "✅ ";
+            font-size: 1.2em;
+        }
+
+        .code {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #2c5aa0;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .diagram {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+            font-family: monospace;
+            line-height: 1.5;
+        }
+
+        .button {
+            display: inline-block;
+            background: #2c5aa0;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .button:hover {
+            background: #1e3c72;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(44,90,160,0.3);
+        }
+
+        .button-secondary {
+            background: #ff9800;
+        }
+
+        .button-secondary:hover {
+            background: #f57c00;
+        }
+
+        footer {
+            background: #2c5aa0;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        footer a {
+            color: white;
+            text-decoration: underline;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+            nav {
+                display: none;
+            }
+            .step, .tip, .warning, .success {
+                page-break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 768px) {
+            main {
+                padding: 20px;
+            }
+            header h1 {
+                font-size: 1.8em;
+            }
+            nav ul {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📖 電子カタログ作成アプリ</h1>
+            <p>使用説明書</p>
+            <div class="version">Version 5.1</div>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="#overview">概要</a></li>
+                <li><a href="#getting-started">はじめに</a></li>
+                <li><a href="#step-by-step">使い方</a></li>
+                <li><a href="#features">機能詳細</a></li>
+                <li><a href="#tips">便利な使い方</a></li>
+                <li><a href="#troubleshooting">トラブルシューティング</a></li>
+                <li><a href="#faq">FAQ</a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <!-- 概要 -->
+            <section id="overview">
+                <h2>📌 概要</h2>
+                <p>電子カタログ作成アプリは、CSVデータと画像ファイルから、印刷可能な見開き型電子カタログを簡単に作成できるWebアプリケーションです。</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-title">CSVデータ対応</div>
+                        <p>Excelから保存したCSVファイルを直接読み込み。エンコーディング自動判定。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🖼️</div>
+                        <div class="feature-title">画像管理</div>
+                        <p>複数画像の一括アップロード。商品ごとに最大5枚まで選択可能。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📄</div>
+                        <div class="feature-title">見開きレイアウト</div>
+                        <p>A4横向きの見開きページ。左右各ページに複数の商品グループを配置。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎨</div>
+                        <div class="feature-title">リアルタイムプレビュー</div>
+                        <p>編集内容が即座に反映。完成イメージを確認しながら作業。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💾</div>
+                        <div class="feature-title">HTML・PDF出力</div>
+                        <p>HTMLファイルまたはPDFで出力。印刷やメール送付に最適。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🚀</div>
+                        <div class="feature-title">クラウド対応</div>
+                        <p>Streamlit Cloudで公開。ブラウザからいつでもアクセス可能。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- はじめに -->
+            <section id="getting-started">
+                <h2>🚀 はじめに</h2>
+
+                <h3>アクセス方法</h3>
+
+                <div class="step">
+                    <strong>Web版（推奨）</strong><br>
+                    <a href="https://ecatalog-vscode.streamlit.app" class="button" target="_blank">
+                        アプリを開く
+                    </a>
+                    <p style="margin-top: 10px;">インストール不要。ブラウザでアクセスするだけで使用可能。</p>
+                </div>
+
+                <div class="step">
+                    <strong>ローカル版</strong><br>
+                    <div class="code">
+git clone https://github.com/funai-yuji-yoshida/ecatalog_vscode.git
+cd ecatalog_vscode
+pip install -r requirements.txt
+streamlit run app.py
+                    </div>
+                </div>
+
+                <h3>必要なデータ</h3>
+
+                <table>
+                    <tr>
+                        <th>データ</th>
+                        <th>形式</th>
+                        <th>説明</th>
+                    </tr>
+                    <tr>
+                        <td>CSVファイル</td>
+                        <td>.csv</td>
+                        <td>商品データ（UTF-8またはShift_JIS）</td>
+                    </tr>
+                    <tr>
+                        <td>商品画像</td>
+                        <td>.png, .jpg, .jpeg</td>
+                        <td>ファイル名を商品コードに合わせる</td>
+                    </tr>
+                </table>
+            </section>
+
+            <!-- 使い方 -->
+            <section id="step-by-step">
+                <h2>📝 使い方（ステップバイステップ）</h2>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>データ準備</strong>
+                    <p>ExcelでCSVファイルを作成し、「CSV UTF-8 (コンマ区切り)」で保存します。</p>
+                    <div class="tip">
+                        商品コード、商品名、メーカー、価格などのカラムを含めてください。
+                    </div>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <strong>CSVアップロード</strong>
+                    <p>サイドバー「1️⃣ データ読み込み」で「Browse files」をクリックし、CSVファイルを選択します。</p>
+                    <div class="success">
+                        読み込み成功すると「✅ XX件のデータを読み込みました」と表示されます。
+                    </div>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <strong>レイアウト設定</strong>
+                    <p>サイドバー「2️⃣ レイアウト設定」で1ページあたりのブロック数を選択します。</p>
+                    <ul style="margin-left: 50px; margin-top: 10px;">
+                        <li>1ブロック: 大きく1商品グループ</li>
+                        <li>2ブロック: 縦に2商品グループ</li>
+                        <li>4ブロック: 2×2グリッド（推奨）</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <strong>カラム設定</strong>
+                    <p>サイドバー「3️⃣ カラム設定」で各項目を設定します。</p>
+
+                    <table style="margin-top: 15px;">
+                        <tr>
+                            <th>設定項目</th>
+                            <th>説明</th>
+                        </tr>
+                        <tr>
+                            <td>グループ化カラム</td>
+                            <td>商品名など、同じ値でグループ化するカラム</td>
+                        </tr>
+                        <tr>
+                            <td>カテゴリヘッダー表示カラム</td>
+                            <td>★シマノ のように表示するカラム（メーカー名など）</td>
+                        </tr>
+                        <tr>
+                            <td>スペック項目カラム</td>
+                            <td>■ 付きで表示する項目（複数選択可）</td>
+                        </tr>
+                        <tr>
+                            <td>商品識別カラム</td>
+                            <td>商品コードなど、画像とマッチングする一意な値</td>
+                        </tr>
+                        <tr>
+                            <td>画像ラベルカラム</td>
+                            <td>画像の下に表示するラベル（品番など）</td>
+                        </tr>
+                        <tr>
+                            <td>表示カラム</td>
+                            <td>バリエーション表に表示するカラム（複数選択）</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">5</span>
+                    <strong>画像アップロード</strong>
+                    <p>サイドバー「4️⃣ 画像設定」で画像を読み込みます。</p>
+
+                    <h4 style="margin-top: 15px; margin-bottom: 10px;">方法A: ファイルアップロード（推奨）</h4>
+                    <ol style="margin-left: 50px;">
+                        <li>「ファイルアップロード」を選択</li>
+                        <li>「Browse files」をクリック</li>
+                        <li>複数の画像ファイルを選択（Ctrl+クリックで複数選択）</li>
+                    </ol>
+
+                    <h4 style="margin-top: 15px; margin-bottom: 10px;">方法B: フォルダ指定</h4>
+                    <ol style="margin-left: 50px;">
+                        <li>「フォルダ指定」を選択</li>
+                        <li>フォルダパスを入力（例: C:/images/products）</li>
+                    </ol>
+
+                    <div class="warning">
+                        画像ファイル名（拡張子除く）を商品コードと一致させてください。<br>
+                        例: 商品コード「10001」→ ファイル名「10001.png」
+                    </div>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">6</span>
+                    <strong>デザイン調整</strong>
+                    <p>サイドバー「5️⃣ デザイン設定」でフォントサイズと余白を調整します。</p>
+                    <ul style="margin-left: 50px; margin-top: 10px;">
+                        <li>フォントサイズ: 10px〜16px（デフォルト: 11px）</li>
+                        <li>余白: 8px〜20px（デフォルト: 12px）</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">7</span>
+                    <strong>商品配置</strong>
+                    <p>メイン画面で左ページ・右ページの各ブロックを設定します。</p>
+
+                    <ol style="margin-left: 50px; margin-top: 10px;">
+                        <li>「ブロック 1」を展開</li>
+                        <li>「商品グループを選択」ドロップダウンから商品を選択</li>
+                        <li>「🖼️ 画像を選択」で表示したい画像を選択（複数可、最大5枚）</li>
+                        <li>プレビューで確認</li>
+                        <li>他のブロックも同様に設定</li>
+                    </ol>
+
+                    <div class="tip">
+                        画像は自動的に商品コードとマッチングして選択されますが、手動で変更・追加も可能です。
+                    </div>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">8</span>
+                    <strong>プレビュー確認</strong>
+                    <p>画面下部の「👁️ 見開きプレビュー」で完成イメージを確認します。</p>
+                    <div class="success">
+                        設定変更はリアルタイムで反映されます。
+                    </div>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">9</span>
+                    <strong>出力</strong>
+                    <p>「💾 出力」セクションでファイルをダウンロードします。</p>
+
+                    <ul style="margin-left: 50px; margin-top: 10px;">
+                        <li><strong>📥 HTMLダウンロード</strong>: ブラウザで開いて印刷可能</li>
+                        <li><strong>📄 PDFを生成</strong>: PDF形式で保存（A4横向き）</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">10</span>
+                    <strong>複数ページ作成（任意）</strong>
+                    <p>「次の見開き ➡️」ボタンで新しいページに移動し、ステップ7〜9を繰り返します。</p>
+                </div>
+            </section>
+
+            <!-- 機能詳細 -->
+            <section id="features">
+                <h2>⚙️ 機能詳細</h2>
+
+                <h3>商品グループブロック構造</h3>
+
+                <div class="diagram">
+┌─────────────────────────────────────┐<br>
+│ ★ シマノ                    ← カテゴリヘッダー │<br>
+├─────────────────────────────────────┤<br>
+│ MTB用サムシフタープラスSL-TX50  ← 商品名 │<br>
+├─────────────────────────────────────┤<br>
+│ ■ 左 1800mm インナー        ← スペック項目 │<br>
+│ ■ 右 2050mm インナー                   │<br>
+├─────────────────────────────────────┤<br>
+│  [画像1]  [画像2]  [画像3]   ← 商品画像  │<br>
+│  ラベル1  ラベル2  ラベル3              │<br>
+├─────────────────────────────────────┤<br>
+│ order number│品番│定価│バーコード ← 表  │<br>
+│   219-xxx   │... │¥..│|||||||        │<br>
+│   219-yyy   │... │¥..│|||||||        │<br>
+└─────────────────────────────────────┘
+                </div>
+
+                <h3>グループ化機能</h3>
+                <p>同じ商品名を持つ複数のバリエーション（色違い、サイズ違い）を1つのブロックにまとめることができます。</p>
+
+                <div class="tip">
+                    <strong>例:</strong><br>
+                    CSV内の「MTB用サムシフタープラス」が4件（色違い）ある場合、<br>
+                    → グループ化カラムに「商品名」を指定すると、1ブロックに4行の表として表示されます。
+                </div>
+
+                <h3>画像の自動マッチング</h3>
+                <p>画像ファイル名（拡張子除く）と商品識別カラムの値が一致する画像が自動的に選択されます。</p>
+
+                <table>
+                    <tr>
+                        <th>商品コード（CSV）</th>
+                        <th>画像ファイル名</th>
+                        <th>結果</th>
+                    </tr>
+                    <tr>
+                        <td>10001</td>
+                        <td>10001.png</td>
+                        <td>✅ 自動マッチング</td>
+                    </tr>
+                    <tr>
+                        <td>ABC-123</td>
+                        <td>ABC-123.jpg</td>
+                        <td>✅ 自動マッチング</td>
+                    </tr>
+                    <tr>
+                        <td>10001</td>
+                        <td>product_10001.png</td>
+                        <td>❌ マッチしない（手動選択必要）</td>
+                    </tr>
+                </table>
+
+                <h3>HTML vs PDF出力</h3>
+
+                <table>
+                    <tr>
+                        <th>項目</th>
+                        <th>HTML</th>
+                        <th>PDF</th>
+                    </tr>
+                    <tr>
+                        <td>見た目</td>
+                        <td>グラデーション、アニメーション</td>
+                        <td>シンプル、印刷最適化</td>
+                    </tr>
+                    <tr>
+                        <td>ファイルサイズ</td>
+                        <td>中（500KB〜1MB）</td>
+                        <td>中（500KB〜1MB）</td>
+                    </tr>
+                    <tr>
+                        <td>印刷品質</td>
+                        <td>⭐⭐⭐⭐⭐</td>
+                        <td>⭐⭐⭐⭐</td>
+                    </tr>
+                    <tr>
+                        <td>編集</td>
+                        <td>可能（HTMLエディタ）</td>
+                        <td>不可</td>
+                    </tr>
+                    <tr>
+                        <td>推奨用途</td>
+                        <td>高品質印刷、Web配布</td>
+                        <td>メール添付、簡易印刷</td>
+                    </tr>
+                </table>
+            </section>
+
+            <!-- 便利な使い方 -->
+            <section id="tips">
+                <h2>💡 便利な使い方・Tips</h2>
+
+                <h3>効率的な画像命名</h3>
+                <div class="tip">
+                    画像ファイル名を商品コードに統一すると、自動マッチングで手間が省けます。<br>
+                    一括リネームツールの使用を推奨。
+                </div>
+
+                <h3>CSVデータの準備</h3>
+                <div class="step">
+                    <strong>推奨カラム構成:</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>商品コード（必須）: 一意な識別子</li>
+                        <li>商品名（推奨）: グループ化に使用</li>
+                        <li>メーカー（推奨）: カテゴリヘッダーに表示</li>
+                        <li>スペック項目（任意）: サイズ、色、重量など</li>
+                        <li>価格（推奨）: 定価、販売価格など</li>
+                        <li>バーコード/JANコード（任意）</li>
+                    </ul>
+                </div>
+
+                <h3>複数ページの効率的な作成</h3>
+                <ol style="margin-left: 30px;">
+                    <li>1ページ目を完成させる</li>
+                    <li>デザイン設定（フォントサイズ、余白）をメモ</li>
+                    <li>「次の見開き」で2ページ目に移動</li>
+                    <li>同じデザイン設定を適用</li>
+                    <li>各ページをHTMLで個別保存</li>
+                </ol>
+
+                <h3>印刷時の設定</h3>
+                <div class="warning">
+                    <strong>HTMLから印刷する場合（Ctrl+P）:</strong><br>
+                    ✅ 背景のグラフィック: ON<br>
+                    ✅ 余白: 最小<br>
+                    ✅ 用紙サイズ: A4 横<br>
+                    ✅ 拡大/縮小: 100%
+                </div>
+
+                <h3>データのバックアップ</h3>
+                <div class="tip">
+                    ブラウザリロードでセッションデータが消失します。<br>
+                    定期的にHTMLファイルを保存することを推奨します。
+                </div>
+            </section>
+
+            <!-- トラブルシューティング -->
+            <section id="troubleshooting">
+                <h2>🔧 トラブルシューティング</h2>
+
+                <h3>❓ CSVアップロード後にエラーが出る</h3>
+                <div class="step">
+                    <strong>原因:</strong> 文字コードの問題<br>
+                    <strong>解決策:</strong>
+                    <ol style="margin-left: 20px; margin-top: 10px;">
+                        <li>Excelで開く</li>
+                        <li>「名前を付けて保存」→「CSV UTF-8 (コンマ区切り)」を選択</li>
+                        <li>再度アップロード</li>
+                    </ol>
+                </div>
+
+                <h3>❓ 画像が表示されない</h3>
+                <div class="step">
+                    <strong>チェック項目:</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>✅ ファイル名（拡張子除く）が商品コードと完全一致しているか</li>
+                        <li>✅ 拡張子が .png, .jpg, .jpeg のいずれかか</li>
+                        <li>✅ 画像が正常にアップロードされたか（サイドバーで確認）</li>
+                        <li>✅ 商品識別カラムの設定が正しいか</li>
+                    </ul>
+                </div>
+
+                <h3>❓ PDF生成に失敗する</h3>
+                <div class="step">
+                    <strong>代替手段:</strong>
+                    <ol style="margin-left: 20px; margin-top: 10px;">
+                        <li>「📥 HTMLダウンロード」でHTMLファイルを保存</li>
+                        <li>ブラウザで開く（ダブルクリック）</li>
+                        <li>Ctrl+P → 「PDFとして保存」を選択</li>
+                        <li>設定: 背景ON、余白最小、A4横</li>
+                    </ol>
+                </div>
+
+                <h3>❓ レイアウトが崩れる</h3>
+                <div class="step">
+                    <strong>確認事項:</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>ブラウザキャッシュをクリア（Ctrl+Shift+R）</li>
+                        <li>推奨ブラウザ: Chrome, Edge（最新版）</li>
+                        <li>ズーム倍率を100%に設定</li>
+                    </ul>
+                </div>
+
+                <h3>❓ アプリが重い・遅い</h3>
+                <div class="step">
+                    <strong>対策:</strong>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>画像ファイルサイズを削減（推奨: 800px幅、300dpi）</li>
+                        <li>CSV行数を10,000行以内に</li>
+                        <li>画像枚数を50枚以内に</li>
+                        <li>ブラウザのタブを閉じて再度開く</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- FAQ -->
+            <section id="faq">
+                <h2>❓ よくある質問（FAQ）</h2>
+
+                <h3>Q1. 無料で使えますか？</h3>
+                <div class="step">
+                    <strong>A:</strong> はい、完全無料です。Streamlit Community Cloudで公開されており、アカウント登録も不要です。
+                </div>
+
+                <h3>Q2. データはサーバーに保存されますか？</h3>
+                <div class="step">
+                    <strong>A:</strong> いいえ。アップロードしたCSVと画像はセッション終了時（ブラウザを閉じる）に自動削除されます。サーバーには保存されません。
+                </div>
+
+                <h3>Q3. 商用利用は可能ですか？</h3>
+                <div class="step">
+                    <strong>A:</strong> はい、可能です。ただし、機密情報を含むデータを扱う場合は、ローカル実行を推奨します。
+                </div>
+
+                <h3>Q4. 1ページに何個の商品を配置できますか？</h3>
+                <div class="step">
+                    <strong>A:</strong> 左右各ページに最大4ブロック、合計8商品グループ/見開きです。1商品グループに複数のバリエーションを含められます。
+                </div>
+
+                <h3>Q5. Excel（.xlsx）ファイルは直接読み込めますか？</h3>
+                <div class="step">
+                    <strong>A:</strong> 現在はCSV形式のみ対応です。Excelから「CSV UTF-8」で保存してください。
+                </div>
+
+                <h3>Q6. 画像はどのサイズが最適ですか？</h3>
+                <div class="step">
+                    <strong>A:</strong> 横800px程度、300dpi推奨。ファイルサイズは1枚あたり5MB以内。
+                </div>
+
+                <h3>Q7. 作成したカタログを編集できますか？</h3>
+                <div class="step">
+                    <strong>A:</strong> HTML出力後、HTMLエディタで編集可能です。または、アプリで設定を変更して再生成してください。
+                </div>
+
+                <h3>Q8. 複数の見開きを1つのPDFにまとめられますか？</h3>
+                <div class="step">
+                    <strong>A:</strong> 現在は見開きごとに個別出力です。各ページをPDFで保存後、PDF結合ツールで結合してください。
+                </div>
+
+                <h3>Q9. オフラインで使えますか？</h3>
+                <div class="step">
+                    <strong>A:</strong> ローカル実行版をインストールすれば可能です。Web版はインターネット接続が必要です。
+                </div>
+
+                <h3>Q10. スマートフォンやタブレットで使えますか？</h3>
+                <div class="step">
+                    <strong>A:</strong> 使用可能ですが、PC・タブレット（横画面）での使用を推奨します。
+                </div>
+            </section>
+
+            <!-- サポート -->
+            <section>
+                <h2>📞 サポート・お問い合わせ</h2>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📧</div>
+                        <div class="feature-title">メール</div>
+                        <p>yuji-yoshida@funaisoken.co.jp</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🐙</div>
+                        <div class="feature-title">GitHub</div>
+                        <p><a href="https://github.com/funai-yuji-yoshida/ecatalog_vscode" target="_blank">リポジトリ</a></p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📝</div>
+                        <div class="feature-title">Issues</div>
+                        <p><a href="https://github.com/funai-yuji-yoshida/ecatalog_vscode/issues" target="_blank">バグ報告・機能要望</a></p>
+                    </div>
+                </div>
+
+                <h3>関連ドキュメント</h3>
+                <ul style="margin-left: 30px;">
+                    <li><a href="README.md">README.md</a> - セットアップガイド</li>
+                    <li><a href="SPECIFICATION.md">SPECIFICATION.md</a> - 詳細仕様書</li>
+                    <li><a href="DEPLOY.md">DEPLOY.md</a> - デプロイ手順書</li>
+                </ul>
+            </section>
+
+            <div style="text-align: center; margin-top: 60px;">
+                <a href="https://ecatalog-vscode.streamlit.app" class="button button-secondary" target="_blank" style="font-size: 1.2em; padding: 15px 40px;">
+                    🚀 今すぐ使ってみる
+                </a>
+            </div>
+        </main>
+
+        <footer>
+            <p><strong>電子カタログ作成アプリ v5.1</strong></p>
+            <p style="margin-top: 10px;">Developed by Funai Soken - Yuji Yoshida</p>
+            <p style="margin-top: 5px; font-size: 0.9em;">
+                <a href="https://github.com/funai-yuji-yoshida/ecatalog_vscode">GitHub</a> |
+                <a href="https://ecatalog-vscode.streamlit.app">Web App</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 0.85em; opacity: 0.8;">
+                © 2026 Funai Soken. Powered by Streamlit.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
